@@ -1,3 +1,6 @@
+#ifndef SELECT_H
+#define SELECT_H
+
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -26,3 +29,5 @@ private:
 public:
 	SELECT ( string rest_of_line );
 };
+
+#endif

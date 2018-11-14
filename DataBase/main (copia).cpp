@@ -200,30 +200,27 @@ private:
 				ssdata << data_temp;
 				while ( ssdata >> data ) 
 					cout << setw(15)<< data;
+				//return;
 				cout<< endl;	
 			}		
 		}
 		cout << endl;
 	}
 	
-	
-void select_operation( string from_table, vector< pair<string, string> > where_condition, string indice ){
+	void select_operation( string from_table, vector< pair<string, string> > where_condition, string indice ){
 		ifstream ifs ( path + "tables/" + from_table + ".dbf", ifstream::in);
 		string data;
 	
 		vector<string> header = print_header_table(ifs);
-		
-		if ( !where_condition.empty() ){
-		
-			if( indice == "" ) print_one_row( ifs, header, where_condition[0] );
-			else {
-				print_one_row( ifs, header, where_condition[0] );
-				///ANADIR FUNCION PARA LEER EL ARBOL CON EL STRING DEL INDICE
-			}
-			
+		if ( indice == "" ){
+			if( !where_condition.empty() ) print_one_row( ifs, header, where_condition[0] );
+			else print_data_table(ifs);
 		}
-		else print_data_table(ifs);	
-		
+		else {
+			if( !where_condition.empty() ) print_one_row( ifs, header, where_condition[0] );
+			else print_data_table(ifs);
+		}
+
 		ifs.close();
 	}
 	
@@ -278,7 +275,8 @@ void select_operation( string from_table, vector< pair<string, string> > where_c
 	
 		//analizar si hay restricciones ------- WHERE, INDICES
 		vector< pair<string, string> > where_condition;
-
+														//USE_DATA_BASE db
+														//SELECT * FROM persona WHERE departamento = 21 IDX = departamento
 		ss >> where;				
 		if( where == "WHERE"){
 		
@@ -298,7 +296,6 @@ void select_operation( string from_table, vector< pair<string, string> > where_c
 		
 		select_operation( from_table, where_condition, indice);
 	}
-	
 	
 	
 public:
@@ -621,45 +618,40 @@ sql_query(string query_): currently_db(NULL){	//CONSTRUCTOR, PARSE DEL INPUT
 	
 };
 
+
+
+
+
 int main (){
-	///DESCOMENTAR PARA MODO CONSOLA
-	/*
+
 	string query;
+	
 	while (true){
-		cout << "  mysql -> ";
+		//cout << "  mysql -> ";
 		getline (cin,query);
 		sql_query query2( query );
 		
-	}*/
-	///CONSULTAS DIRECTAS PARA NO ESCRIBIR EN CONSOLA A CADA RATO
-	
-	sql_query query1("USE_DATA_BASE bd");
-	sql_query query2("SELECT * FROM persona WHERE departamento = 24 IDX = departamento");
+	}
 	
 	/*
-	//sql_query query1("CREATE_DATA_BASE students_db");
-	sql_query query2("USE_DATA_BASE students_db");
-	//sql_query query3("CREATE_TABLE name_table (id INT, nombre VARCHAR, edad INT)");
-	//sql_query query4("INSERT name_table (18, 'Jose', 4)");
-	//sql_query query5("SELECT * FROM name_table");
-	//sql_query query6("SELECT nombre, edad FROM name_table");
-	sql_query query7("SELECT * FROM auto_table");
-	//sql_query query8("UPDATE name_table SET edad = 24 WHERE id = 20");
-	//sql_query query9("UPDATE name_table SET nombre = 'Julio' WHERE id = 19");
-	//sql_query query10("DELETE name_table WHERE id = 19");
-	//sql_query query11("CREATE_TABLE auto_table (id AUTO-INT, nombre AUTO-VARCHAR, edad RANDOM-INT, Ciudad AUTO-VARCHAR)");
-	//sql_query query12("INSERT_AUTO auto_table (100,  , nombre_, random( 6 - 15 ), Ciudad_)");
-	//sql_query query12("INSERT_AUTO auto_table (100,  , nombre_, Ciudad_)");
+		CREATE_DATA_BASE students_db
+		USE_DATA_BASE students_db
+		CREATE_TABLE name_table (id INT, nombre VARCHAR, edad INT)
+		INSERT name_table (18, 'Jose', 4)
+		SELECT * FROM name_table
+		UPDATE name_table SET edad = 24 WHERE id = 20
+		DELETE name_table WHERE id = 19
+		CREATE_TABLE auto_table (id AUTO-INT, nombre AUTO-VARCHAR, edad RANDOM-INT, Ciudad AUTO-VARCHAR)
+		INSERT_AUTO auto_table (100,  , nombre_, random( 6 - 15 ), Ciudad_)
+		
+		///INDICES
+		SELECT * FROM persona WHERE departamento = 23 IDX = departamento
 	*/
-	
-	
-	
-	
+		
 	return 0;
 }
 
 /************************************************CONSULTAS PARCIAL********************************************
-	CREATE_DATA_BASE bd
 	USE_DATA_BASE bd
 	CREATE_TABLE persona ( dni AUTO_INT, nombre AUTO_VARCHAR, departamento RANDOM_INT(1-100) 	
 	INSERT_AUTO persona (10000,  , nombre_, random( 1 - 100 ))
