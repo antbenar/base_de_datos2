@@ -12,7 +12,9 @@ public:
 	vector<T> data;
 	vector<Node*> hijos;
 	Node* parent;
-
+	
+	vector<vector<int>> ubicacion;
+	
 	Node() :parent(NULL) {}
 	Node(T value) :parent(NULL) { data.push_back(value); }
 	~Node() { data.clear(); hijos.clear(); }
@@ -30,6 +32,7 @@ public:
 	BTree();
 	BTree(T initial_value);
 	int search_Node(Node<T>* cur_node, T value_to_find, Node<T>*& node_to_save);
+	int search_specific_node(Node<T>* cur_node, T value_to_find, Node<T>*& node_to_save);
 	bool insert(T new_value);
 	void print(Node<T>* cur_node);
 	void erase_Node(T x);
@@ -182,7 +185,6 @@ int main(int argc, char *argv[]) {
 	a.insert(18);
 	a.insert(19);
 
-	
 	/*a.insert(3);
 	a.insert(5);
 	a.insert(7);
@@ -191,9 +193,8 @@ int main(int argc, char *argv[]) {
 	a.insert(0);
 	a.insert(1);
 	a.insert(2);*/
-
+	
 	a.print(a.root);
-	system("pause");
 	return 0;
 }
 

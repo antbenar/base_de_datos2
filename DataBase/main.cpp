@@ -8,6 +8,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 
+#include <ctime>
 #include <sstream>
 #include <string>
 #include <iomanip>
@@ -15,7 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>     
 #include <time.h>  
-
+#include "avlTree.cpp"
 //#include "includes/select.h"
 //#include "includes/update.cpp"
 using namespace std;
@@ -23,29 +24,7 @@ using namespace std;
 
 string path = "DataBases/";
 
-
 class db{
-private:
-	friend class boost::serialization::access; 	
-
-    template<class Archive>
-    void serialize(Archive & ar, const unsigned int version)
-    {
-    	//ar & name;   
-    }
-    
-    void save_db(const char * filename){// make an archive		
-		std::ofstream ofs( filename, ios_base::binary );
-		boost::archive::binary_oarchive ar(ofs);
-		ar << *this;;
-    }
-    
-    void restore_db(const char * filename){// open the archive
-		std::ifstream ifs(filename, ios_base::binary);
-		boost::archive::binary_iarchive ia(ifs);
-		ia >> *this;
-	}
-  
 public:
 	db(){};
 		
@@ -123,7 +102,7 @@ public:
 			}
 			else string_to_auto.push_back(data);
 		}
-		
+	
 		for( int i =1; i<= cantidad_inserts; ++i){
 			for( int j =0; j< string_to_auto.size(); ++j){
 				if( string_to_auto[j]== "random_0"){
@@ -140,7 +119,143 @@ public:
 		myfile.close();
 	}
 	
-};  
+};
+
+
+
+
+
+
+
+
+
+ 
+class INDICE{
+private:
+	friend class boost::serialization::access; 	
+
+    template<class Archive>
+    void serialize(Archive & ar, const unsigned int version)
+    {
+    	for (int i = 0; i<posiciones.size(); ++i)
+    		ar & posiciones[i]; 
+    	ar & nombre;  
+    	ar & from_table;
+    	 
+    }
+    
+    void save_index(const char * filename){// make an archive		
+		std::ofstream ofs( filename, ios_base::binary );
+		boost::archive::binary_oarchive ar(ofs);
+		ar << *this;;
+    }
+    
+    void restore_index(const char * filename){// open the archive
+		std::ifstream ifs(filename, ios_base::binary);
+		boost::archive::binary_iarchive ia(ifs);
+		ia >> *this;
+	}
+  //**********************************************end serialization****************************/
+
+	
+	
+	vector<string> header_table( ifstream & ifs ){
+		vector<string> header;
+		string data;
+	
+		getline(ifs, data);
+		stringstream ssdata;
+		ssdata << data;
+
+		while ( ssdata >> data ) {
+			header.push_back( data );	
+			ssdata >> data;
+		}
+
+		return header;		
+	}
+	
+	void idx_recorrer_tabla( ifstream & ifs,  vector<string> header ){
+		int i;
+		for( i = 0; i<header.size(); ++i)
+			if( header[i] == nombre ) break;
+	
+		string data, data_temp;
+		int id;
+
+		while (getline(ifs, data)) {
+			data_temp = data;
+			stringstream ssdata;
+			ssdata << data;
+
+			ssdata >> data;
+			id = stoi(data);
+			
+			for( int j = 1; j <= i; ++j)	
+				ssdata >> data;
+				
+			//insert node	
+			//Node* cur = search(root,stoi(data));
+			posiciones[stoi(data)].push_back(id);
+		}	
+	}	
+	
+	void CREATE_INDEX(){
+		for (int i=1; i<100 ; ++i) root=insert(root,i);
+		
+		ifstream ifs ( path + "tables/" + from_table + ".dbf", ifstream::in);
+		string data;
+		
+		vector<string> header = header_table(ifs);
+
+		idx_recorrer_tabla( ifs, header );
+		
+		/*Node* cur = search(root,24);
+		if (cur == nullptr )cout<< "null" <<endl;
+		else cout << cur->key << endl;*/
+		//imprimir(root,"");
+
+		save_index( ( path + nombre +".idx").c_str() );
+		
+		ifs.close();
+	}
+	
+public:
+	Node* root;
+	string nombre, from_table;
+	
+	vector<vector<int>> posiciones;
+	
+	
+	INDICE(): posiciones(100001,vector<int>(0)){}
+	
+	void READ_INDICE( string nombre_){
+		nombre = nombre_;
+		root = NULL;
+
+		restore_index( ( path + nombre +".idx"  ).c_str() );
+	}
+	
+	void WRITE_INDICE( string nombre_, string from_table_ ){
+		nombre = nombre_;
+		from_table = from_table_;
+		root = NULL;
+		CREATE_INDEX();
+	}
+	
+};
+INDICE idx; 
+
+
+
+
+
+
+
+
+
+
+
 
 class SELECT{
 
@@ -206,23 +321,44 @@ private:
 		cout << endl;
 	}
 	
+	void print_segun_indice( ifstream & ifs, vector<int>indice ){
+		string data;	
+		int cont=1, i=0;
+		
+		while ( getline(ifs, data) && i < indice.size() ) {
+			if( cont++ == indice[i] ){
+				stringstream ssdata(data);
+
+				while ( ssdata >> data ) 
+					cout << setw(15)<< data;
+				cout<< endl;
+				++i;	
+			}	
+		}
+		cout << endl;
+	}
 	
-void select_operation( string from_table, vector< pair<string, string> > where_condition, string indice ){
+	
+	void select_operation( string from_table, vector< pair<string, string> > where_condition, string indice ){
 		ifstream ifs ( path + "tables/" + from_table + ".dbf", ifstream::in);
 		string data;
 	
 		vector<string> header = print_header_table(ifs);
+		vector<vector<int>> posiciones;
 		
 		if ( !where_condition.empty() ){
 		
-			if( indice == "" ) print_one_row( ifs, header, where_condition[0] );
-			else {
+			if( indice == "" ) 	//SI NO HAY INDICE SE BUSCA POR TODA LA TABLA
 				print_one_row( ifs, header, where_condition[0] );
-				///ANADIR FUNCION PARA LEER EL ARBOL CON EL STRING DEL INDICE
-			}
-			
-		}
-		else print_data_table(ifs);	
+				
+			else {					
+				posiciones = idx.posiciones;
+				int pos = stoi( where_condition[0].second );
+				
+				print_segun_indice( ifs, posiciones[pos] );
+			}			
+		} 
+		else print_data_table(ifs);		//SI NO HAY WHERE SE IMPRIME TODITO DE FRENTE
 		
 		ifs.close();
 	}
@@ -332,7 +468,7 @@ private:
 		return where_condition_;
 	}
 	
-	map<string,int> copy_header_table( ifstream & ifs, ofstream & ofs){	//retorna el numero de columna del set y de la col del where
+	map<string,int> copy_header_table ( ifstream & ifs, ofstream & ofs ){	//retorna el numero de columna del set y de la col del where
 		map<string,int> num_cols;
 		int pos=0;
 		string data, aux;
@@ -554,14 +690,17 @@ private:
 void print_help() {
 	cout<<endl<<endl;
 	cout << "   -   CREATE_DATA_BASE bd "  <<endl;
-	cout << "   -   USE_DATA_BASE students_db "  <<endl;
+	cout << "   -   CREATE_INDEX edad FROM alumnos"  <<endl; 
+	cout << "   -   INDEX_RAM edad"  <<endl;
 	cout << "   -   CREATE_TABLE name_table (id INT, nombre VARCHAR, edad INT)"  <<endl;
 	cout << "   -   CREATE_TABLE auto_table (id AUTO-INT, nombre AUTO-VARCHAR, edad RANDOM-INT, Ciudad AUTO-VARCHAR)"  <<endl;
 	cout << "   -   INSERT name_table (18, 'Jose', 4)"  <<endl;
 	cout << "   -   INSERT_AUTO auto_table (100,  , nombre_, random( 6 - 15 ), Ciudad_)"  <<endl;
 	cout << "   -   SELECT * FROM name_table WHERE id = 28"  <<endl;
 	cout << "   -   UPDATE name_table SET edad = 25 WHERE id = 19"  <<endl;
-	cout << "   -   DELETE name_table WHERE id = 19"  <<endl <<endl;
+	cout << "   -   DELETE name_table WHERE id = 19"  <<endl;
+	cout << "   -   USE_DATA_BASE students_db "  <<endl << endl;
+
 }
 
 db* currently_db;
@@ -574,12 +713,28 @@ sql_query(string query_): currently_db(NULL){	//CONSTRUCTOR, PARSE DEL INPUT
 	stringstream ss;
 	ss << query_;
 	
-	string func, name, rest_of_line;
+	string func, name, rest_of_line, tabla;
 	
-	while( ss >> func ){
+	while( ss >> func ){	
 		if( func == "SELECT" ){
+		
 			getline(ss, rest_of_line);
+			
+			clock_t begin = clock();
 			SELECT select(rest_of_line);
+			
+			clock_t end = clock();
+			cout << "tiempo de consulta: " << double(end - begin) / CLOCKS_PER_SEC << endl;
+			
+		}
+		else if( func == "CREATE_INDEX" ){
+			ss >> name;
+			ss >> rest_of_line >> tabla;
+			idx.WRITE_INDICE(name, tabla);
+		}
+		else if( func == "INDEX_RAM" ){
+			ss >> name;
+			idx.READ_INDICE(name); 
 		}
 		else if( func == "INSERT" ){
 			ss >> name;
@@ -616,6 +771,7 @@ sql_query(string query_): currently_db(NULL){	//CONSTRUCTOR, PARSE DEL INPUT
 		else if( func == "HELP" || func == "help" ){
 			print_help();
 		}
+		
 	}
 }
 	
@@ -630,30 +786,41 @@ int main (){
 		getline (cin,query);
 		sql_query query2( query );
 		
-	}*/
-	///CONSULTAS DIRECTAS PARA NO ESCRIBIR EN CONSOLA A CADA RATO
-	
-	sql_query query1("USE_DATA_BASE bd");
-	sql_query query2("SELECT * FROM persona WHERE departamento = 24 IDX = departamento");
-	
-	/*
-	//sql_query query1("CREATE_DATA_BASE students_db");
-	sql_query query2("USE_DATA_BASE students_db");
-	//sql_query query3("CREATE_TABLE name_table (id INT, nombre VARCHAR, edad INT)");
-	//sql_query query4("INSERT name_table (18, 'Jose', 4)");
-	//sql_query query5("SELECT * FROM name_table");
-	//sql_query query6("SELECT nombre, edad FROM name_table");
-	sql_query query7("SELECT * FROM auto_table");
-	//sql_query query8("UPDATE name_table SET edad = 24 WHERE id = 20");
-	//sql_query query9("UPDATE name_table SET nombre = 'Julio' WHERE id = 19");
-	//sql_query query10("DELETE name_table WHERE id = 19");
-	//sql_query query11("CREATE_TABLE auto_table (id AUTO-INT, nombre AUTO-VARCHAR, edad RANDOM-INT, Ciudad AUTO-VARCHAR)");
-	//sql_query query12("INSERT_AUTO auto_table (100,  , nombre_, random( 6 - 15 ), Ciudad_)");
-	//sql_query query12("INSERT_AUTO auto_table (100,  , nombre_, Ciudad_)");
+	}
 	*/
 	
 	
+	///CONSULTAS DIRECTAS PARA NO ESCRIBIR EN CONSOLA A CADA RATO
 	
+	
+	///Crear base de datos
+	sql_query query1("CREATE_DATA_BASE bd");
+	sql_query query3("CREATE_TABLE alumno ( id AUTO_INT, nombre AUTO_VARCHAR, edad RANDOM_INT(1-100) )");
+	sql_query query4("INSERT_AUTO alumno (100000,  , nombre_, random( 1 - 100 ))");
+	
+	
+	/*
+	///Crear indices
+	sql_query query1("USE_DATA_BASE bd");
+	sql_query query2("CREATE_INDEX edad FROM alumno");
+	sql_query query3("CREATE_INDEX id FROM alumno");
+	*/
+	
+	/*
+	//comparar select normal contra indices con edad
+	sql_query query1("USE_DATA_BASE bd");
+	sql_query query2("INDEX_RAM edad");
+	sql_query query4("SELECT * FROM alumno WHERE edad = 24");
+	sql_query query3("SELECT * FROM alumno WHERE edad = 24 IDX = edad");
+	*/
+	
+	/*
+	//comparar select normal contra indices con id
+	sql_query query1("USE_DATA_BASE bd");
+	sql_query query2("INDEX_RAM id");
+	sql_query query4("SELECT * FROM alumno WHERE id = 99998");
+	sql_query query3("SELECT * FROM alumno WHERE id = 99998 IDX = id");
+	*/
 	
 	return 0;
 }
