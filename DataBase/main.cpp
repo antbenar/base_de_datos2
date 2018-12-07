@@ -201,7 +201,7 @@ private:
 	}	
 	
 	void CREATE_INDEX(){
-		for (int i=1; i<100 ; ++i) root=insert(root,i);
+		//for (int i=1; i<100 ; ++i) root=insert(root,i); //root arbol
 		
 		ifstream ifs ( path + "tables/" + from_table + ".dbf", ifstream::in);
 		string data;
@@ -210,10 +210,12 @@ private:
 
 		idx_recorrer_tabla( ifs, header );
 		
-		/*Node* cur = search(root,24);
-		if (cur == nullptr )cout<< "null" <<endl;
-		else cout << cur->key << endl;*/
-		//imprimir(root,"");
+		/*
+		Node* cur = search(root,24);
+		if (cur == nullptr )cur=cur->insert(root,key);
+		cur->posiciones.push_back(key);
+		*/
+
 
 		save_index( ( path + nombre +".idx").c_str() );
 		
@@ -223,20 +225,21 @@ private:
 public:
 	Node* root;
 	string nombre, from_table;
-	
 	vector<vector<int>> posiciones;
 	
 	
-	INDICE(): posiciones(100001,vector<int>(0)){}
+	INDICE(){}
 	
-	void READ_INDICE( string nombre_){
+	void READ_INDICE( long long int size_index, string nombre_){
 		nombre = nombre_;
 		root = NULL;
-
+		posiciones.assign(size_index, vector<int>(0) );
+		
 		restore_index( ( path + nombre +".idx"  ).c_str() );
 	}
 	
-	void WRITE_INDICE( string nombre_, string from_table_ ){
+	void WRITE_INDICE( long long int size_index, string nombre_, string from_table_ ){
+		posiciones.assign(size_index, vector<int>(0) );
 		nombre = nombre_;
 		from_table = from_table_;
 		root = NULL;
@@ -728,13 +731,19 @@ sql_query(string query_): currently_db(NULL){	//CONSTRUCTOR, PARSE DEL INPUT
 			
 		}
 		else if( func == "CREATE_INDEX" ){
-			ss >> name;
-			ss >> rest_of_line >> tabla;
-			idx.WRITE_INDICE(name, tabla);
+			long long int size_index;
+			ss >> name >> size_index >> rest_of_line >> tabla;
+			idx.WRITE_INDICE(size_index, name, tabla);
 		}
 		else if( func == "INDEX_RAM" ){
-			ss >> name;
-			idx.READ_INDICE(name); 
+			long long int size_index;
+			ss >> name >> size_index;
+			
+			clock_t begin = clock();
+			idx.READ_INDICE(size_index, name); 
+			clock_t end = clock();
+			cout << "tiempo en cargar indice: " << double(end - begin) / CLOCKS_PER_SEC << endl;
+		
 		}
 		else if( func == "INSERT" ){
 			ss >> name;
@@ -787,39 +796,31 @@ int main (){
 		sql_query query2( query );
 		
 	}
-	*/
 	
+	*/
 	
 	///CONSULTAS DIRECTAS PARA NO ESCRIBIR EN CONSOLA A CADA RATO
 	
-	
 	///Crear base de datos
+	/*
 	sql_query query1("CREATE_DATA_BASE bd");
 	sql_query query3("CREATE_TABLE alumno ( id AUTO_INT, nombre AUTO_VARCHAR, edad RANDOM_INT(1-100) )");
 	sql_query query4("INSERT_AUTO alumno (100000,  , nombre_, random( 1 - 100 ))");
+	*/
 	
 	
-	/*
 	///Crear indices
-	sql_query query1("USE_DATA_BASE bd");
-	sql_query query2("CREATE_INDEX edad FROM alumno");
-	sql_query query3("CREATE_INDEX id FROM alumno");
-	*/
-	
 	/*
+	sql_query query1("USE_DATA_BASE bd");
+	sql_query query2("CREATE_INDEX edad 101 FROM alumno");
+	*/
+
 	//comparar select normal contra indices con edad
-	sql_query query1("USE_DATA_BASE bd");
-	sql_query query2("INDEX_RAM edad");
-	sql_query query4("SELECT * FROM alumno WHERE edad = 24");
-	sql_query query3("SELECT * FROM alumno WHERE edad = 24 IDX = edad");
-	*/
-	
 	/*
-	//comparar select normal contra indices con id
 	sql_query query1("USE_DATA_BASE bd");
-	sql_query query2("INDEX_RAM id");
-	sql_query query4("SELECT * FROM alumno WHERE id = 99998");
-	sql_query query3("SELECT * FROM alumno WHERE id = 99998 IDX = id");
+	sql_query query5("INDEX_RAM edad 101");
+	sql_query query6("SELECT * FROM alumno WHERE edad = 24");
+	sql_query query7("SELECT * FROM alumno WHERE edad = 24 IDX = edad");
 	*/
 	
 	return 0;
